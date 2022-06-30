@@ -1,0 +1,43 @@
+@import './fonts.scss';
+
+body {
+  font-family: $FONT_SANS;
+  margin: 0;
+  background-color: lighten(tan, 1.4);
+
+  &>nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin: 0 1rem;
+    border-bottom: 1px solid black;
+
+    &>.logo {
+      font-size: 2rem;
+      font-family: $FONT_DISPLAY;
+
+      &>a {
+        text-decoration: none;
+        color: black;
+      }
+    }
+
+    &>.nav-options {
+      font-family: $FONT_DISPLAY;
+
+      &>ul {
+        display: flex;
+        list-style: none;
+
+        &>li {
+          margin: 0 1rem;
+        }
+      }
+    }
+  }
+
+  &>section.content-wrapper {
+    margin: 1rem;
+  }
+}

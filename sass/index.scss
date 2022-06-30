@@ -1,0 +1,11 @@
+article>.two-column-wrapper {
+  display: flex;
+  justify-content: space-between;
+
+  &>.right-column {
+    &>.shadertoy-mandelbulb-iframe {
+      box-shadow: 0 0rem .5rem 0.125rem #75b095;
+      border-radius: 8px;
+    }
+  }
+}
