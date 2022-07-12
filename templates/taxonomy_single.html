@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="article-wrapper">
+  <h1 class="title">
+    {{ term.name }}
+  </h1>
+
+  {% for page in term.pages %}
+    <div class="page-line">
+      {{ page.date }} - <a href="{{ page.path }}">{{ page.title }}</a>
+    </div>
+  {% endfor %}
+</article>
+{% endblock content %}

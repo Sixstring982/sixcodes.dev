@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="article-wrapper">
+  <h1 class="title">
+    {{ page.title }}
+  </h1>
+  <p class="subtitle"><strong>{{ page.date }}</strong></p>
+  {{ page.content | safe }}
+
+  <div class="comment-section">
+    <h1>Thanks for reading!</h1>
+    Feel free to reach out if you have any comments to:
+    <div>sixstring982 (at) gmail (dot) com.</div>
+  </div>
+</article>
+{% endblock content %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="article-wrapper">
+  <h1 class="title">
+    Blog posts by {{ taxonomy.name }}
+  </h1>
+
+  {% for term in terms %}
+    <h2>
+      <a href={{ term.path }}>{{ term.name }}</a>
+    </h2>
+    {% for page in term.pages %}
+      <div class="page-line">
+        {{ page.date }} - <a href="{{ page.path }}">{{ page.title }}</a>
+      </div>
+    {% endfor %}
+  {% endfor %}
+</article>
+{% endblock content %}

@@ -4,6 +4,7 @@ body {
   font-family: $FONT_SANS;
   margin: 0;
   background-color: lighten(tan, 1.4);
+  position: relative;
 
   &>nav {
     display: flex;
@@ -39,5 +40,21 @@ body {
 
   &>section.content-wrapper {
     margin: 1rem;
+    margin-bottom: 0;
+    padding-bottom: 5rem;
+  }
+
+  &>footer {
+    box-sizing: border-box;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    width: 100vw;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 0;
+    background-color: #2b303b;
+    color: #b48ead;
   }
 }

@@ -3,14 +3,18 @@
 {% block content %}
 <h1 class="title">
   {{ section.title }}
+  (<a href='/tag'>group by tag</a>)
 </h1>
 {% if section.pages %}
 <ul>
   {% for page in section.pages %}
-  <li><a href="{{ page.permalink | safe }}">{{ page.title }}</a></li>
+  <li>
+    <time datetime="{{page.date}}">{{page.date}}</time>
+    <a href="{{ page.permalink | safe }}">{{ page.title }}</a>
+  </li>
   {% endfor %}
 </ul>
 {% else %}
-  There are no blog posts yet. Stay tuned!
+There are no blog posts yet. Stay tuned!
 {% endif %}
 {% endblock content %}
