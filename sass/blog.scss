@@ -1,12 +1,20 @@
 .article-wrapper {
   margin: 0 25%;
+
+  @media (max-width: 1000px) {
+    margin: 0 10%;
+  }
+}
+
+p {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 
 code:not(pre > code) {
   padding: 0.125rem 0.25rem;
-  background-color: #2b303b;
   border-radius: 4px;
-  color: #b48ead;
+  border: 1px solid rgba(0,0,0,.4)
 }
 
 pre {
