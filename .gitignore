@@ -1,3 +1,6 @@
 # Build output is specifically _not_ ignored -- GitHub pages serves this
 # content directly.
-# public/
+# docs/
+
+# Allows ripgrep users to ignore grepping certain directories
+.rgignore

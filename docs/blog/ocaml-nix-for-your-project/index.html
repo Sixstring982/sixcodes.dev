@@ -1,0 +1,314 @@
+<html lang="en">
+<meta charset="utf-8">
+<link rel="stylesheet" href="/main.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display&display=swap" rel="stylesheet">
+
+<body>
+  <nav>
+    <div class="logo">
+      <a href="/">
+        Six codes
+      </a>
+    </div>
+    <div class="nav-options">
+      <ul>
+        <li>
+          <a href="/blog/">Blog</a>
+        </li>
+        <li>
+          <a href="/">About</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <section class="content-wrapper">
+    
+<article class="article-wrapper">
+  <h1 class="title">
+    Using nix for your OCaml project
+  </h1>
+  <p class="subtitle"><strong>2024-01-22</strong></p>
+  <h1 id="summary">Summary</h1>
+<p>In this article, we discuss several strategies for starting to use <code>nix</code> for
+<code>ocaml</code> development. We'll include strategies for new projects, as well as ones
+for converting large existing codebases to be based on Nix.</p>
+<h1 id="background">Background</h1>
+<h2 id="what-is-nix-at-a-high-level">What is <code>nix</code> (at a high level)?</h2>
+<p><code>nix</code> can refer to a few things within the <code>nix</code> ecosystem:</p>
+<ul>
+<li>A package manager, first and foremost.
+<ul>
+<li>Nix strives to be a &quot;purely-functional&quot; package manager, meaning that packages
+managed by <code>nix</code> are built in a consistent way.</li>
+</ul>
+</li>
+<li>An operating system -- namely <code>NixOS</code>
+<ul>
+<li>This takes the <code>nix</code> package manager to its ultimate conclusion -- <code>NixOS</code>
+uses the <code>nix</code> package manager to configure your entire linux-based
+operating system.</li>
+</ul>
+</li>
+<li>The <code>nix</code> language
+<ul>
+<li>This is a DSL for configuring the above. It's pretty similar to a
+lazily-evaluated JSON with functions.</li>
+</ul>
+</li>
+<li>A command-line utility (called <code>nix</code>) for interfacing with the above.</li>
+</ul>
+<h2 id="how-does-nixpkgs-work">How does <code>nixpkgs</code> work?</h2>
+<p><code>nixpkgs</code> is a repository of <code>nix</code> code, which is used by default to configure
+the <code>nix</code> package manager. It's hosted at
+<a href="https://github.com/NixOS/nixpkgs">https://github.com/NixOS/nixpkgs</a>.</p>
+<p><code>nixpkgs</code> provides several <em>channels</em> -- effectively, these are special git
+commits which we can point the <code>nix</code> package manager at. Channelse come in a few
+different flavors:</p>
+<ul>
+<li>Stable channels -- e.g. <code>nixpkgs-23.11</code> -- do not change after creation
+(besides bug fixes and security pathces), and are released every six months</li>
+<li><code>nixpkgs-unstable</code> is pinned to the repo main branch, so new contributions
+to <code>nixpkgs</code> can be pulled in to your project regularly.</li>
+</ul>
+<p>You can also clone/fork <code>nixpkgs</code> and point <code>nix</code> to this repo instead. This
+can be useful for adding e.g. private repositories, but other mechanisms like
+overlays are probably better for this.</p>
+<h2 id="what-s-an-overlay">What's an overlay?</h2>
+<p>A <code>nix</code> overlay is a function which can be used to override package definitions
+from a <code>nix</code> channel. You can use these to get <code>nix</code> to use different package
+versions, or provide new packages that aren't in the public <code>nixpkgs</code>.</p>
+<h2 id="what-s-a-flake">What's a flake?</h2>
+<p>I like to think of a flake as &quot;<code>nix</code>'s version of <code>package.json</code>&quot;.</p>
+<p>Technically, it's a standardized way to provide a project-level <code>nix</code>
+configuration, which defines a few things:</p>
+<ul>
+<li>Inputs (which are other flakes that your flake depends on)
+<ul>
+<li>Note that <code>nixpkgs</code> is conveniently also a flake, making it easy to depend
+on!</li>
+</ul>
+</li>
+<li>Outputs, definining a few things:
+<ul>
+<li>Packages, which other flakes can depend on</li>
+<li>Development environments, which come into scope when using <code>nix develop</code></li>
+</ul>
+</li>
+</ul>
+<p>This is an extremely useful tool for just about any software project. We'll
+be writing a flake later on for our OCaml project.</p>
+<h2 id="how-does-nix-fit-into-an-existing-ocaml-project">How does <code>nix</code> fit into an existing OCaml project?</h2>
+<p>Most OCaml projects use <a href="https://opam.ocaml.org/"><code>opam</code></a> -- the <strong>O</strong>Caml
+<strong>Pa</strong>ckage <strong>M</strong>anager -- to manage project dependencies.</p>
+<p><code>nix</code> replaces <code>opam</code> for your project, since it not only provides OCaml
+packages, but it can also provide your entire OCaml toolchain.</p>
+<h1 id="overview">Overview</h1>
+<h2 id="an-ocaml-nix-starter-project">An <code>ocaml</code> + <code>nix</code> starter project</h2>
+<p>Let's start by using a Nix flake for our project. The easiest way to do this
+is to use a template. If you'd like to use a template, feel free to -- you can
+do so by running:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ nix flake init -t github:sixstring982/flakes#ocaml-dune-project
+</span></code></pre>
+<p>But for now let's go ahead and write one from scratch.
+This should help us get a good idea about how flakes work, and what's
+necessary to create one.</p>
+<p><code>flake.nix</code>:</p>
+<pre data-lang="nix" style="background-color:#2b303b;color:#c0c5ce;" class="language-nix "><code class="language-nix" data-lang="nix"><span>{
+</span><span>  </span><span style="color:#65737e;"># Human-readable project description.
+</span><span>  </span><span style="color:#d08770;">description </span><span>= &quot;</span><span style="color:#a3be8c;">My OCaml project</span><span>&quot;;
+</span><span>
+</span><span>  </span><span style="color:#65737e;"># Flakes can use other flakes as &quot;inputs&quot;.
+</span><span>  </span><span style="color:#d08770;">inputs </span><span>= {
+</span><span>    </span><span style="color:#65737e;"># Pin nixpkgs to the unstable channel. Other channels can
+</span><span>    </span><span style="color:#65737e;"># be used here instead.
+</span><span>    </span><span style="color:#d08770;">nixpkgs</span><span>.</span><span style="color:#d08770;">url </span><span>= &quot;</span><span style="color:#a3be8c;">github:NixOS/nixpkgs/nixpkgs-unstable</span><span>&quot;;
+</span><span>
+</span><span>    </span><span style="color:#65737e;"># Import flake-utils, which provides useful utilities for
+</span><span>    </span><span style="color:#65737e;"># writing flakes.
+</span><span>    </span><span style="color:#d08770;">flake-utils</span><span>.</span><span style="color:#d08770;">url </span><span>= &quot;</span><span style="color:#a3be8c;">github:numtide/flake-utils</span><span>&quot;;
+</span><span>
+</span><span>    </span><span style="color:#65737e;"># Import nix-filter, which can help us filter our project
+</span><span>    </span><span style="color:#65737e;"># files, to avoid unnecessary rebuilds.
+</span><span>    </span><span style="color:#d08770;">nix-filter</span><span>.</span><span style="color:#d08770;">url </span><span>= &quot;</span><span style="color:#a3be8c;">github:numtide/nix-filter</span><span>&quot;;
+</span><span>  };
+</span><span>
+</span><span>  </span><span style="color:#65737e;"># Outputs describe the things that nix is going to set up for
+</span><span>  </span><span style="color:#65737e;"># our project, and any other things for other flakes to depend on.
+</span><span>  </span><span style="color:#d08770;">outputs </span><span>= </span><span style="color:#8fa1b3;">{ </span><span>self, nixpkgs, flake-utils </span><span style="color:#8fa1b3;">}</span><span>:
+</span><span>    </span><span style="color:#b48ead;">let
+</span><span>      </span><span style="color:#65737e;"># Set up some commonly-used bindings
+</span><span>      </span><span style="color:#d08770;">legacyPackages </span><span>= </span><span style="color:#bf616a;">nixpkgs</span><span>;
+</span><span>
+</span><span>      </span><span style="color:#65737e;"># Version of the OCaml compiler you&#39;d like to use (e.g. 5.1).
+</span><span>      </span><span style="color:#d08770;">ocamlVersion </span><span>= &quot;</span><span style="color:#a3be8c;">ocamlPackages_5_1</span><span>&quot;;
+</span><span>      </span><span style="color:#65737e;"># List of available OCaml packages in nixpkgs for our compiler
+</span><span>      </span><span style="color:#d08770;">ocamlPackages </span><span>= </span><span style="color:#bf616a;">legacyPackages</span><span>.</span><span style="color:#bf616a;">ocaml-ng</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">ocamlVersion</span><span style="font-style:italic;color:#ab7967;">}</span><span>;
+</span><span>
+</span><span>      </span><span style="color:#65737e;"># This should be the name of your OCaml project, as opam sees it.
+</span><span>      </span><span style="color:#d08770;">projectName </span><span>= &quot;</span><span style="color:#a3be8c;">my_project</span><span>&quot;;
+</span><span>      </span><span style="color:#d08770;">projectVersion </span><span>= &quot;</span><span style="color:#a3be8c;">0.0.1</span><span>&quot;;
+</span><span>
+</span><span>      </span><span style="color:#65737e;"># Filtered sources (prevents unecessary rebuilds)
+</span><span>      </span><span style="color:#d08770;">sources </span><span>= {
+</span><span>        </span><span style="color:#d08770;">ocaml </span><span>= </span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib </span><span>{
+</span><span>          </span><span style="color:#d08770;">root </span><span>= </span><span style="color:#a3be8c;">./.</span><span>;
+</span><span>          </span><span style="color:#d08770;">include </span><span>= [
+</span><span>            &quot;</span><span style="color:#a3be8c;">.ocamlformat</span><span>&quot;
+</span><span>            &quot;</span><span style="color:#a3be8c;">dune-project</span><span>&quot;
+</span><span>            (</span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib</span><span>.</span><span style="color:#bf616a;">inDirectory </span><span>&quot;</span><span style="color:#a3be8c;">bin</span><span>&quot;)
+</span><span>            (</span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib</span><span>.</span><span style="color:#bf616a;">inDirectory </span><span>&quot;</span><span style="color:#a3be8c;">lib</span><span>&quot;)
+</span><span>            (</span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib</span><span>.</span><span style="color:#bf616a;">inDirectory </span><span>&quot;</span><span style="color:#a3be8c;">test</span><span>&quot;)
+</span><span>          ];
+</span><span>        };
+</span><span>
+</span><span>        </span><span style="color:#d08770;">nix </span><span>= </span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib </span><span>{
+</span><span>          </span><span style="color:#d08770;">root </span><span>= </span><span style="color:#a3be8c;">./.</span><span>;
+</span><span>          </span><span style="color:#d08770;">include </span><span>= [
+</span><span>            (</span><span style="color:#bf616a;">nix-filter</span><span>.</span><span style="color:#bf616a;">lib</span><span>.</span><span style="color:#bf616a;">matchExt </span><span>&quot;</span><span style="color:#a3be8c;">nix</span><span>&quot;)
+</span><span>          ];
+</span><span>        };
+</span><span>      };
+</span><span>    </span><span style="color:#b48ead;">in
+</span><span>    </span><span style="color:#65737e;"># eachDefaultSystem allows us to easily make this package cross-platform.
+</span><span>    </span><span style="color:#bf616a;">flake-utils</span><span>.</span><span style="color:#bf616a;">lib</span><span>.</span><span style="color:#bf616a;">eachDefaultSystem</span><span>(system: {
+</span><span>      </span><span style="color:#65737e;"># These packages are built by this project.
+</span><span>      </span><span style="color:#65737e;"># You can use `nix build` to build these.
+</span><span>      </span><span style="color:#d08770;">packages </span><span>= {
+</span><span>        </span><span style="color:#65737e;"># The `default` package builds when running `nix build` with no
+</span><span>        </span><span style="color:#65737e;"># arguments.
+</span><span>        </span><span style="color:#d08770;">default </span><span>= </span><span style="color:#bf616a;">self</span><span>.</span><span style="color:#bf616a;">packages</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">system</span><span style="font-style:italic;color:#ab7967;">}</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectName</span><span style="font-style:italic;color:#ab7967;">}</span><span>;
+</span><span>
+</span><span>        </span><span style="color:#65737e;"># Our package is one which is built with `dune`.
+</span><span>        </span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectName</span><span style="font-style:italic;color:#ab7967;">} </span><span>= </span><span style="color:#bf616a;">ocamlPackages</span><span>.</span><span style="color:#bf616a;">buildDunePackage </span><span>{
+</span><span>            </span><span style="color:#d08770;">pname </span><span>= </span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectName</span><span style="font-style:italic;color:#ab7967;">}</span><span>;
+</span><span>            </span><span style="color:#d08770;">version </span><span>= </span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectVersion</span><span style="font-style:italic;color:#ab7967;">}</span><span>;
+</span><span>            </span><span style="color:#d08770;">duneVersion </span><span>= &quot;</span><span style="color:#a3be8c;">3</span><span>&quot;;
+</span><span>            </span><span style="color:#d08770;">src </span><span>= </span><span style="color:#bf616a;">sources</span><span>.</span><span style="color:#bf616a;">ocaml</span><span>;
+</span><span>
+</span><span>            </span><span style="color:#65737e;"># Here, we list other OCaml libraries that our project
+</span><span>            </span><span style="color:#65737e;"># depends on.
+</span><span>            </span><span style="color:#d08770;">buildInputs </span><span>= [
+</span><span>              </span><span style="color:#65737e;"># ocamlPackages.opium
+</span><span>            ];
+</span><span>
+</span><span>            </span><span style="color:#d08770;">strictDeps </span><span>= </span><span style="color:#d08770;">true</span><span>;
+</span><span>
+</span><span>            </span><span style="color:#d08770;">preBuild </span><span>= &quot;</span><span style="color:#a3be8c;">dune build </span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectName</span><span style="font-style:italic;color:#ab7967;">}</span><span style="color:#a3be8c;">.opam</span><span>&quot;;
+</span><span>        };
+</span><span>      };
+</span><span>
+</span><span>      </span><span style="color:#65737e;"># Flakes can have development shells, which can be enterred
+</span><span>      </span><span style="color:#65737e;"># via `nix develop`.
+</span><span>      </span><span style="color:#d08770;">devShells </span><span>= {
+</span><span>        </span><span style="color:#d08770;">default </span><span>= </span><span style="color:#bf616a;">legacyPackages</span><span>.</span><span style="color:#bf616a;">mkShell </span><span>{
+</span><span>          </span><span style="color:#65737e;"># Tools that you&#39;ll need available via your command line
+</span><span>          </span><span style="color:#65737e;"># when working on this project
+</span><span>          </span><span style="color:#d08770;">packages </span><span>= [
+</span><span>            </span><span style="color:#bf616a;">legacyPackages</span><span>.</span><span style="color:#bf616a;">fswatch
+</span><span>            </span><span style="color:#bf616a;">legacyPackages</span><span>.</span><span style="color:#bf616a;">ocamlformat
+</span><span>            </span><span style="color:#bf616a;">ocamlPackages</span><span>.</span><span style="color:#bf616a;">ocaml-lsp
+</span><span>          ];
+</span><span>
+</span><span>          </span><span style="color:#65737e;"># Tools that are available via building your project
+</span><span>          </span><span style="color:#d08770;">inputsFrom </span><span>= [
+</span><span>            </span><span style="color:#bf616a;">self</span><span>.</span><span style="color:#bf616a;">packages</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">system</span><span style="font-style:italic;color:#ab7967;">}</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">projectName</span><span style="font-style:italic;color:#ab7967;">}
+</span><span>          ];
+</span><span>        };
+</span><span>      };
+</span><span>    });
+</span><span>}
+</span></code></pre>
+<p>TIP: If you want your flake to reload every time you use it, set up
+<a href="https://direnv.net/">direnv</a> and write <code>use flake</code> into <code>.envrc</code></p>
+<p>This approach should work great for setting up a new OCaml project which
+depends solely on dependencies found in <code>nixpkgs</code>.</p>
+<h2 id="using-nix-in-an-existing-ocaml-project">Using <code>nix</code> in an existing <code>ocaml</code> project</h2>
+<p>However, if you're wanting to adapt an existing OCaml project to replace
+<code>opam</code> with <code>nix</code>, you'll need to migrate somehow.</p>
+<h3 id="impure-option-opam-nix">Impure option: <code>opam-nix</code></h3>
+<p>If you're OK with an impure option -- i.e. still using <code>opam</code> to manage your
+OCaml packages, but getting the other benefits from <code>nix</code> -- you could use
+<code>opam-nix</code>.</p>
+<p><a href="https://www.tweag.io/blog/2023-02-16-opam-nix/"><code>opam-nix</code></a> is a flake
+developed by <code>tweag</code>, which fakes <code>opam</code> to some degree, allowing you to easily
+bootstrap an existing <code>opam</code> project with <code>nix</code>.</p>
+<p>You'll likely run into problems using this with a larger codebase, however.
+it may be better to use a pure option if this ends up happening to you.</p>
+<h3 id="pure-options">Pure options</h3>
+<h4 id="happy-option-use-nixpkgs-as-is">Happy option: Use <code>nixpkgs</code> as-is</h4>
+<p>If all of your dependencies are already in <code>nixpkgs</code>, it's fairly
+straightforward to migrate your project to use <code>nix</code> in a pure fashion -- simply
+use the flake above, and fill out the <code>buildInputs</code> section with all of your
+build inputs.</p>
+<p>Note that the versions of these inputs may change depending on the ones that
+are in <code>nixpkgs</code> -- as seen later on in this article, you'll need to use
+overlays in order to override these versions if you need to do so.</p>
+<h4 id="unhappy-path">Unhappy path</h4>
+<p>If you need to depend on other packages which are not already in <code>nixpkgs</code>, you
+have a few options:</p>
+<h5 id="contribute-to-nixpkgs">Contribute to <code>nixpkgs</code></h5>
+<p>If you need to depend on a package which could be added to <code>nixpkgs</code>, you could
+contribute to <code>nixpkgs</code> in order to add it. Keep in mind that this may be a lot
+of work if this package is not compatible with other packages in <code>nixpkgs</code> --
+you may need to upgrade other packages at this time as well.</p>
+<p>See <a href="https://github.com/NixOS/nixpkgs/pull/276114">this pull request</a> as an
+example of adding an OCaml package which was not already available.</p>
+<h5 id="using-overlays">Using overlays</h5>
+<p>If a package that you need to depend on is going to be tricky to get into
+<code>nixpkgs</code>, you couuld override the <code>nixpkgs</code> definition in your flake with
+an <em>overlay</em>.</p>
+<p>Here's what you would need to change in the above flake in order to add a new
+package -- in this case, upgrading <code>riot</code> to <code>0.0.7</code>:</p>
+<pre data-lang="nix" style="background-color:#2b303b;color:#c0c5ce;" class="language-nix "><code class="language-nix" data-lang="nix"><span style="color:#65737e;"># Here, we tell `nix` that we want to overlay `nixpkgs` with some overrides.
+</span><span style="color:#65737e;"># We&#39;ll need to use functional updates for the entire `ocaml-ng` definition,
+</span><span style="color:#65737e;"># and any sub-definitions that need updating.
+</span><span style="color:#65737e;">#
+</span><span style="color:#65737e;"># This pattern can be used to override any number of nix packages, OCaml or
+</span><span style="color:#65737e;"># otherwise.
+</span><span style="color:#bf616a;">legacyPackages </span><span style="background-color:#bf616a;color:#2b303b;">=</span><span> </span><span style="color:#96b5b4;">import </span><span style="color:#bf616a;">nixpkgs </span><span>{
+</span><span>  </span><span style="color:#b48ead;">inherit </span><span style="color:#d08770;">system</span><span>; </span><span style="color:#d08770;">overlays </span><span>= [
+</span><span>  (final: prev: {
+</span><span>    </span><span style="color:#d08770;">ocaml-ng </span><span>= </span><span style="color:#bf616a;">prev</span><span>.</span><span style="color:#bf616a;">ocaml-ng </span><span>// {
+</span><span>      </span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">ocamlVersion</span><span style="font-style:italic;color:#ab7967;">} </span><span>= </span><span style="color:#bf616a;">prev</span><span>.</span><span style="color:#bf616a;">ocaml-ng</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">ocamlVersion</span><span style="font-style:italic;color:#ab7967;">} </span><span>// {
+</span><span>        </span><span style="color:#d08770;">riot </span><span>= </span><span style="color:#bf616a;">prev</span><span>.</span><span style="color:#bf616a;">ocaml-ng</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">ocamlVersion</span><span style="font-style:italic;color:#ab7967;">}</span><span>.</span><span style="color:#bf616a;">riot</span><span>.</span><span style="color:#bf616a;">overrideAttrs </span><span>(_: {
+</span><span>          </span><span style="color:#d08770;">version </span><span>= &quot;</span><span style="color:#a3be8c;">0.0.7</span><span>&quot;;
+</span><span>
+</span><span>          </span><span style="color:#d08770;">src </span><span>= </span><span style="color:#bf616a;">legacyPackages</span><span>.</span><span style="color:#bf616a;">fetchFromGitHub </span><span>{
+</span><span>            </span><span style="color:#d08770;">owner </span><span>= &quot;</span><span style="color:#a3be8c;">leostera</span><span>&quot;;
+</span><span>            </span><span style="color:#d08770;">repo </span><span>= &quot;</span><span style="color:#a3be8c;">riot</span><span>&quot;;
+</span><span>            </span><span style="color:#d08770;">rev </span><span>= &quot;</span><span style="color:#a3be8c;">7dc78950b5dc172aef74bacee977abd2011005d2</span><span>&quot;;
+</span><span>            </span><span style="color:#d08770;">sha256 </span><span>= &quot;</span><span style="color:#a3be8c;">sha256-YiUok7cwczyl8ee3LkNiWU/O+hWQdqTGRFVmJOLMpsw=</span><span>&quot;;
+</span><span>          };
+</span><span>
+</span><span>          </span><span style="color:#d08770;">propagatedBuildInputs </span><span>= </span><span style="color:#b48ead;">with </span><span style="color:#bf616a;">final</span><span>.</span><span style="color:#bf616a;">ocaml-ng</span><span>.</span><span style="font-style:italic;color:#ab7967;">${</span><span style="font-style:italic;color:#bf616a;">ocamlVersion</span><span style="font-style:italic;color:#ab7967;">}</span><span>; [
+</span><span>            </span><span style="color:#bf616a;">bigstringaf
+</span><span>            </span><span style="color:#bf616a;">cstruct
+</span><span>            </span><span style="color:#bf616a;">poll
+</span><span>            </span><span style="color:#bf616a;">ptime
+</span><span>            </span><span style="color:#bf616a;">telemetry
+</span><span>            </span><span style="color:#bf616a;">uri
+</span><span>          ];
+</span><span>        });
+</span><span>      };
+</span><span>    };
+</span><span>  })
+</span><span>];
+</span><span>}</span><span style="background-color:#bf616a;color:#2b303b;">;</span><span>
+</span></code></pre>
+
+
+  <div class="comment-section">
+    <h1>Thanks for reading!</h1>
+    Feel free to reach out if you have any comments to:
+    <div>sixstring982 (at) gmail (dot) com.</div>
+  </div>
+</article>
+
+  </section>
+  <footer>
+    <div class="footer-content">
+      Ⓒ2022 sixstring982, all rights reserved.
+    </div>
+  </footer>
