@@ -1,8 +1,6 @@
-# Deployment
+# sixcodes.dev
 
-This site is hosted at `https://sixcodes.dev`. You can deploy by:
+This project hosts the source code for the website hosted at
+`https://sixcodes.dev`.
 
-* Running `zola build`
-* Running `scp -r public/* sixm.fyi:~/sixcodes-dev`
-* Running `ssh sixm.fyi`
-* Running `cp -r sixcodes-dev/ /srv/nginxroot/`
+Currently it is deployed via GitHub pages.
