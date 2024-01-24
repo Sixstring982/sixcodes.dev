@@ -1,0 +1,172 @@
+<html lang="en">
+<meta charset="utf-8">
+<link rel="stylesheet" href="/main.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display&display=swap" rel="stylesheet">
+
+<body>
+  <nav>
+    <div class="logo">
+      <a href="/">
+        Six codes
+      </a>
+    </div>
+    <div class="nav-options">
+      <ul>
+        <li>
+          <a href="/blog/">Blog</a>
+        </li>
+        <li>
+          <a href="/">About</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <section class="content-wrapper">
+    
+<article class="article-wrapper">
+  <h1 class="title">
+    TypeScript Piped Inference
+  </h1>
+  <p class="subtitle"><strong>2023-01-29</strong></p>
+  <h1 id="summary">Summary</h1>
+<p>In this article, we demonstrate a powerful TypeScript trick that allows types to
+be inferred using the <code>extends</code> keyword on <code>unknown</code> types.</p>
+<h1 id="the-challenge">The challenge</h1>
+<p>We want to be able to write something like this:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">const </span><span style="color:#bf616a;">bar</span><span>: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39; =
+</span><span>  </span><span style="color:#8fa1b3;">getMember</span><span>(
+</span><span>    { foo: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39;, value: </span><span style="color:#d08770;">123 </span><span>} </span><span style="color:#b48ead;">as const</span><span>,
+</span><span>    &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39;)
+</span></code></pre>
+<p>If you'd like, go ahead and give this a try in the <a href="https://www.typescriptlang.org/play">TypeScript
+Playground</a> before reading on...</p>
+<h1 id="generic-functions">Generic functions</h1>
+<p>Let's say that we want to write a function which returns its only argument. This
+is trivially easy in JavaScript:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">identity</span><span>(</span><span style="color:#bf616a;">value</span><span>) {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">value
+</span><span>}
+</span></code></pre>
+<p>However, in TypeScript, this gives us a type error (when <code>noImplicitAny</code> is
+enabled... you're using <code>noImplicitAny</code>, right?):</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#65737e;">// Parameter &#39;value&#39; implicitly has
+</span><span style="color:#65737e;">// an &#39;any&#39; type.(7006)
+</span><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">identity</span><span>(</span><span style="color:#bf616a;">value</span><span>) {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">value
+</span><span>}
+</span></code></pre>
+<p>We could fix the type that the user is going to supply:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">identity</span><span>(</span><span style="color:#bf616a;">value</span><span>: number): number {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">value
+</span><span>}
+</span></code></pre>
+<p>But now this function only works for numbers... Is there a better way?</p>
+<p>Yes! We can make this a <em>generic function</em>:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">identity</span><span>&lt;A&gt;(</span><span style="color:#bf616a;">value</span><span>: A): A {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">value
+</span><span>}
+</span></code></pre>
+<p>When usages of <code>identity</code> are type-checked, TypeScript substitutes <code>A</code> for the
+given type. For example, <code>identity</code> works for <code>number</code>:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">const </span><span style="color:#bf616a;">value</span><span>: number = </span><span style="color:#8fa1b3;">identity</span><span>&lt;number&gt;(</span><span style="color:#d08770;">1234</span><span>)
+</span></code></pre>
+<p>TypeScript can also <em>infer</em> the type of its argument, so we don't need to
+specify the type variable:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">const </span><span style="color:#bf616a;">value</span><span>: number = </span><span style="color:#8fa1b3;">identity</span><span>(</span><span style="color:#d08770;">1234</span><span>)
+</span></code></pre>
+<h2 id="back-to-our-challenge">Back to our challenge...</h2>
+<p>Now that we know a little more about how generics work, let's see if we can
+leverage them to implement <code>getMember</code>:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">getMember
+</span><span>  &lt;T, R </span><span style="color:#b48ead;">extends </span><span>Record&lt;string, T&gt;&gt;
+</span><span>  (</span><span style="color:#bf616a;">record</span><span>: R, </span><span style="color:#bf616a;">field</span><span>: keyof R): T {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">record</span><span>[</span><span style="color:#bf616a;">field</span><span>]
+</span><span>}
+</span></code></pre>
+<p>Unfortunately this does not work like we would want it to:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">const </span><span style="color:#bf616a;">bar </span><span>= </span><span style="color:#8fa1b3;">getMember</span><span>(
+</span><span>  { foo: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39;, value: </span><span style="color:#d08770;">123 </span><span>} </span><span style="color:#b48ead;">as const</span><span>,
+</span><span>  &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39;)
+</span><span style="color:#65737e;">// bar: &#39;bar&#39; | 123
+</span></code></pre>
+<p>The problem here is that <code>R</code> is typed as <code>Record&lt;string, 'bar' | 123&gt;</code>, because
+<code>T</code> is typed as <code>'bar' | 123</code> in order to cover the type of all values in our
+record.</p>
+<p>This is a bit of a problem - how are we going to specify a type for each field
+in our record?</p>
+<h1 id="piped-inference">Piped inference</h1>
+<p>The trick is to leverage type inference here, using a combination of <code>extends</code>
+and <code>unknown</code>:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">getMember
+</span><span>  &lt;R </span><span style="color:#b48ead;">extends </span><span>Record&lt;string | number | symbol, unknown&gt;,
+</span><span>   F </span><span style="color:#b48ead;">extends </span><span>keyof R&gt;
+</span><span>  (</span><span style="color:#bf616a;">record</span><span>: R, </span><span style="color:#bf616a;">field</span><span>: F): R[F] {
+</span><span>  </span><span style="color:#b48ead;">return </span><span style="color:#bf616a;">record</span><span>[</span><span style="color:#bf616a;">field</span><span>]
+</span><span>}
+</span></code></pre>
+<p>We need to type this with enough information for <code>R</code> to be dereferenced - in
+this case, it needs to be a record - and we need to use <code>F extends keyof R</code> in
+order to narrow down the key we're using.</p>
+<p>To see why this works, we can expand the type variables (and in this case, we
+can get rid of the <code>as const</code> assertion, but note that <code>as const</code> will help when
+the type variables are inferred):</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#b48ead;">const </span><span style="color:#bf616a;">bar </span><span>= </span><span style="color:#8fa1b3;">getMember</span><span>&lt;{</span><span style="color:#bf616a;">foo</span><span>: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39;, </span><span style="color:#bf616a;">value</span><span>: </span><span style="color:#d08770;">123</span><span>}, &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39;&gt;(
+</span><span>  { foo: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39;, value: </span><span style="color:#d08770;">123 </span><span>}, &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39;)
+</span><span style="color:#65737e;">// bar: &#39;bar&#39;
+</span></code></pre>
+<p>I call this technique <em>piped inference</em> - I can't find another name for this in
+the wild.</p>
+<h1 id="more-recipes">More recipes</h1>
+<p>This technique is pretty powerful, and is useful in all sorts of other
+situations:</p>
+<h3 id="variadic-combiner">Variadic combiner</h3>
+<p>This pattern allows us to write a function which takes a variable number of
+arguments, and combine them in a strongly typed way.</p>
+<p>The trick here is to take an argument which extends a non-empty tuple of unknown
+values, ie. <code>extends [unknown, ...unknown[]]</code>.</p>
+<p>Let's say we want a function which takes a variadic number of arguments which
+may or may not be <code>undefined</code>, returns <code>undefined</code> if any argument is
+<code>undefined</code>, or runs a combiner function on the arguments otherwise:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#8fa1b3;">combineNonUndefineds</span><span>(
+</span><span>  &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39; </span><span style="color:#b48ead;">as const</span><span>,
+</span><span>  &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39; </span><span style="color:#b48ead;">as const</span><span>,
+</span><span>  &#39;</span><span style="color:#a3be8c;">baz</span><span>&#39; </span><span style="color:#b48ead;">as const</span><span>,
+</span><span>  (</span><span style="color:#bf616a;">a</span><span>: &#39;</span><span style="color:#a3be8c;">foo</span><span>&#39;, </span><span style="color:#bf616a;">b</span><span>: &#39;</span><span style="color:#a3be8c;">bar</span><span>&#39;, </span><span style="color:#bf616a;">c</span><span>: &#39;</span><span style="color:#a3be8c;">baz</span><span>&#39;) </span><span style="color:#b48ead;">=&gt; </span><span style="color:#bf616a;">a </span><span>+ </span><span style="color:#bf616a;">b </span><span>+ </span><span style="color:#bf616a;">c</span><span>)
+</span></code></pre>
+<p>We can type <code>combineNonUndefineds</code> as:</p>
+<pre data-lang="typescript" style="background-color:#2b303b;color:#c0c5ce;" class="language-typescript "><code class="language-typescript" data-lang="typescript"><span style="color:#65737e;">/** Similar to `Exclude`, but can exclude `O` from an entire array */
+</span><span style="color:#b48ead;">type </span><span>ExcludeAll&lt;T </span><span style="color:#b48ead;">extends </span><span>[unknown, ...unknown[]], O&gt; =
+</span><span>  T </span><span style="color:#b48ead;">extends </span><span>[infer A, ...infer B] ?
+</span><span>    B </span><span style="color:#b48ead;">extends </span><span>[unknown, ...unknown[]] ? [A, ...ExcludeAll&lt;B, O&gt;] : [A, B]
+</span><span>  : never
+</span><span>
+</span><span style="color:#b48ead;">function </span><span style="color:#8fa1b3;">combineNonUndefineds
+</span><span>  &lt;Ts </span><span style="color:#b48ead;">extends </span><span>[unknown, ...unknown[]], A&gt;
+</span><span>  (...</span><span style="color:#bf616a;">args</span><span>: [
+</span><span>    ...values: Ts,
+</span><span>    combiner: (...</span><span style="color:#bf616a;">values</span><span>: ExcludeAll&lt;Ts, undefined&gt;) </span><span style="color:#b48ead;">=&gt; </span><span>A
+</span><span>  ]): A | undefined { </span><span style="color:#65737e;">/* ... */ </span><span>}
+</span></code></pre>
+<h1 id="takeaways">Takeaways</h1>
+<p>In general, TypeScript's inference is really powerful. It can be leveraged to
+make generics more powerful.</p>
+<p>The main lesson here is that generics should be used in order to specify just
+enough information to get the job done, and inference can help by making types
+based off of generics more specific.</p>
+
+
+  <div class="comment-section">
+    <h1>Thanks for reading!</h1>
+    Feel free to reach out if you have any comments to:
+    <div>sixstring982 (at) gmail (dot) com.</div>
+  </div>
+</article>
+
+  </section>
+  <footer>
+    <div class="footer-content">
+      Ⓒ2022 sixstring982, all rights reserved.
+    </div>
+  </footer>

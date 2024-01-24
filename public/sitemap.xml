@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://sixcodes.dev/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/blog/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/blog/haskell-conversion-typeclasses/</loc>
+        <lastmod>2022-07-03</lastmod>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/blog/typescript-piped-inference/</loc>
+        <lastmod>2023-01-29</lastmod>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/design-patterns/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/haskell/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/inference/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/types/</loc>
+    </url>
+    <url>
+        <loc>https://sixcodes.dev/tag/typescript/</loc>
+    </url>
+</urlset>

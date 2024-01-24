@@ -1,0 +1,167 @@
+<html lang="en">
+<meta charset="utf-8">
+<link rel="stylesheet" href="/main.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display&display=swap" rel="stylesheet">
+
+<body>
+  <nav>
+    <div class="logo">
+      <a href="/">
+        Six codes
+      </a>
+    </div>
+    <div class="nav-options">
+      <ul>
+        <li>
+          <a href="/blog/">Blog</a>
+        </li>
+        <li>
+          <a href="/">About</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <section class="content-wrapper">
+    
+<article class="article-wrapper">
+  <h1 class="title">
+    Converters in Haskell
+  </h1>
+  <p class="subtitle"><strong>2022-07-03</strong></p>
+  <h1 id="summary">Summary</h1>
+<p>In this article, we explore options for converting from one type to another in
+Haskell. We suggest using functions to do this work, unless converting to/from
+multiple types - in that case, we suggest using typeclasses, or the
+<code>Convertible</code> typeclass if you expect to need many converters in your project
+and can take on extra dependencies, and you're disciplined enough to not abuse
+its power.</p>
+<h1 id="the-problem">The Problem</h1>
+<p>I've been working through some <a href="https://projecteuler.net/">Project Euler</a>
+problems lately. Many of the early problems deal with digits in a number; for
+example, <a href="https://projecteuler.net/problem=4">finding palindromic numbers</a>.</p>
+<p>So, in order to help, I created a simple type for dealing with digits:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#b48ead;">newtype </span><span style="color:#d08770;">Digit </span><span>= </span><span style="color:#d08770;">Digit Natural
+</span></code></pre>
+<p><code>Natural</code> is nice here - digits in a number are always positve - but <code>Natural</code>
+is way too big for each digit <code>1..9</code>. So I created a smart constructor to parse
+digits:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#8fa1b3;">toDigit </span><span style="color:#b48ead;">:: Natural -&gt; Either String Digit
+</span><span>toDigit n
+</span><span>  | n &gt;= </span><span style="color:#d08770;">0</span><span> &amp;&amp; n &lt;= </span><span style="color:#d08770;">9 </span><span>= </span><span style="color:#d08770;">Right </span><span>$ </span><span style="color:#d08770;">Digit</span><span> n
+</span><span>  | otherwise = </span><span style="color:#d08770;">Left </span><span>$ &quot;</span><span style="color:#a3be8c;">Can&#39;t parse </span><span>&quot; &lt;&gt; show n &lt;&gt; &quot;</span><span style="color:#a3be8c;"> to a digit!</span><span>&quot;
+</span></code></pre>
+<p>This is fine and dandy when creating <code>Digit</code>s from <code>Int</code>s, but it's also common
+to create <code>Digit</code>s from <code>Char</code>s - for example, when turning a <code>Natural</code> into a
+<code>[Digit]</code>:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#8fa1b3;">digits </span><span style="color:#b48ead;">:: Natural -&gt; Either String</span><span> [</span><span style="color:#b48ead;">Digit</span><span>]
+</span><span>digits = mapM toDigit . show
+</span></code></pre>
+<p>The problem here being that <code>toDigit :: Char -&gt; Either String Digit</code> is not
+defined. I could map again using some <code>Char -&gt; Int</code> here, but it seems more
+general (and safer, using <code>Either</code> to catch failures) to use <code>toDigit</code> here. So,
+I need a way to convert <code>Natural</code> to <code>Digit</code>, and <code>Char</code> to <code>Digit</code>.</p>
+<h1 id="prior-work">Prior work</h1>
+<p>It's quite common to convert from one type to another. Usually the language
+you're using will support many conversions to and from builtin types, but it's
+common to convert to/from types you define.</p>
+<h2 id="regular-old-functions">Regular old functions</h2>
+<p>How about we just write a function to convert one type to another? This is how I
+originally approached this, with <code>toDigit</code>.</p>
+<p>Pros:</p>
+<ul>
+<li>Works fine for single type conversions. This is probably what you should use
+unless you know that you'll need to convert more than one type.</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>It'd be nice to be able to convert multiple types in this way - say,
+having a <code>toFoo</code> function that could take a <code>Bar</code> or a <code>Baz</code>.</li>
+</ul>
+<h2 id="using-typeclasses">Using typeclasses</h2>
+<p>How about using a typeclass for each of these? eg.</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#b48ead;">newtype </span><span style="color:#d08770;">MyNumber </span><span>= </span><span style="color:#d08770;">MyNumber Int
+</span><span>
+</span><span style="color:#b48ead;">class </span><span style="color:#a3be8c;">ToDigit </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">where
+</span><span>  </span><span style="color:#8fa1b3;">toDigit </span><span style="color:#b48ead;">:: </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">-&gt; Digit
+</span><span>
+</span><span style="color:#b48ead;">class </span><span style="color:#a3be8c;">PartialToDigit </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">where
+</span><span>  </span><span style="color:#8fa1b3;">partialToDigit </span><span style="color:#b48ead;">:: </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">-&gt; Either String Digit
+</span><span>
+</span><span style="color:#b48ead;">class </span><span style="color:#a3be8c;">FromDigit </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">where
+</span><span>  </span><span style="color:#8fa1b3;">fromDigit </span><span style="color:#b48ead;">:: Digit -&gt; </span><span style="color:#bf616a;">a
+</span><span>
+</span><span style="color:#b48ead;">class </span><span style="color:#a3be8c;">PartialFromDigit </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">where
+</span><span>  </span><span style="color:#8fa1b3;">partialFromDigit </span><span style="color:#b48ead;">:: Digit -&gt; Either String </span><span style="color:#bf616a;">a
+</span></code></pre>
+<p>Pros:</p>
+<ul>
+<li>Simple</li>
+<li>Provides a consistent API: can be adapted for any type using this naming
+convention</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>More boilerplate, but can probably be alleviated with some Template Haskell.</li>
+</ul>
+<h2 id="using-the-convertible-package">Using the <a href="https://hackage.haskell.org/package/convertible"><code>convertible</code></a> package</h2>
+<p>This package declares <a href="https://hackage.haskell.org/package/convertible-1.1.1.1/docs/Data-Convertible-Base.html#g:1">the <code>Convertible</code>
+typeclass</a>,
+for converting from <code>a</code> to <code>b</code>:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#b48ead;">type </span><span style="color:#d08770;">ConvertResult</span><span> a = </span><span style="color:#d08770;">Either ConvertError</span><span> a
+</span><span>
+</span><span style="color:#b48ead;">class </span><span style="color:#a3be8c;">Convertible </span><span style="color:#bf616a;">a b </span><span style="color:#b48ead;">where
+</span><span>  </span><span style="color:#8fa1b3;">safeConvert </span><span style="color:#b48ead;">:: </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">-&gt; ConvertResult </span><span style="color:#bf616a;">b
+</span></code></pre>
+<p>There's also a handy <code>convert</code> function, but it's partial:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#8fa1b3;">convert </span><span style="color:#b48ead;">:: Convertible </span><span style="color:#bf616a;">a b </span><span style="color:#b48ead;">=&gt; </span><span style="color:#bf616a;">a </span><span style="color:#b48ead;">-&gt; </span><span style="color:#bf616a;">b
+</span><span>convert x =
+</span><span>    </span><span style="color:#b48ead;">case</span><span> safeConvert x </span><span style="color:#b48ead;">of
+</span><span>      </span><span style="color:#d08770;">Left</span><span> e -&gt; error (prettyConvertError e)
+</span><span>      </span><span style="color:#d08770;">Right</span><span> r -&gt; r
+</span></code></pre>
+<h3 id="similarities-to-scala-s-implicit-conversions">Similarities to Scala's implicit conversions</h3>
+<p>This <code>Convertible</code> typeclass reminds me of Scala's implicit conversions in
+some ways: you can convert between two types by simply using the <code>convert</code>
+keyword, as long as there's a way to convert between the two. In this way,
+you can make a function take just about any argument as long as it converts
+to the type that you need.</p>
+<p>For example, you could implement some sort of boolean coercion using
+<code>Convertible</code>:</p>
+<pre data-lang="haskell" style="background-color:#2b303b;color:#c0c5ce;" class="language-haskell "><code class="language-haskell" data-lang="haskell"><span style="color:#b48ead;">instance Convertible Int Bool where
+</span><span>  safeConvert n = </span><span style="color:#d08770;">Right </span><span>$ n /= </span><span style="color:#d08770;">0
+</span><span>
+</span><span style="color:#65737e;">-- | Prints &quot;bar&quot;.
+</span><span style="color:#8fa1b3;">main </span><span style="color:#b48ead;">:: IO </span><span>()
+</span><span>main =
+</span><span>  </span><span style="color:#b48ead;">if</span><span> convert </span><span style="color:#d08770;">0
+</span><span>  </span><span style="color:#b48ead;">then</span><span> putStrLn &quot;</span><span style="color:#a3be8c;">foo</span><span>&quot;
+</span><span>  </span><span style="color:#b48ead;">else</span><span> putStrLn &quot;</span><span style="color:#a3be8c;">bar</span><span>&quot;
+</span></code></pre>
+<p>Pros:</p>
+<ul>
+<li>One typeclass to rule them all</li>
+<li>Some nice utilities for failure modes</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>This technique is pretty powerful, and can be used to make types more
+&quot;dynamic&quot; than they probably should be. Care should be taken to avoid
+over-abstraction.</li>
+</ul>
+
+
+  <div class="comment-section">
+    <h1>Thanks for reading!</h1>
+    Feel free to reach out if you have any comments to:
+    <div>sixstring982 (at) gmail (dot) com.</div>
+  </div>
+</article>
+
+  </section>
+  <footer>
+    <div class="footer-content">
+      Ⓒ2022 sixstring982, all rights reserved.
+    </div>
+  </footer>

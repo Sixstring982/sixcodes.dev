@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+    <title> - Haskell</title>
+    <link href="https://sixcodes.dev/tag/haskell/atom.xml" rel="self" type="application/atom+xml"/>
+    <link href="https://sixcodes.dev"/>
+    <generator uri="https://www.getzola.org/">Zola</generator>
+    <updated>2022-07-03T00:00:00+00:00</updated>
+    <id>https://sixcodes.dev/tag/haskell/atom.xml</id>
+    <entry xml:lang="en">
+        <title>Converters in Haskell</title>
+        <published>2022-07-03T00:00:00+00:00</published>
+        <updated>2022-07-03T00:00:00+00:00</updated>
+        <author>
+          <name>Unknown</name>
+        </author>
+        <link rel="alternate" href="https://sixcodes.dev/blog/haskell-conversion-typeclasses/" type="text/html"/>
+        <id>https://sixcodes.dev/blog/haskell-conversion-typeclasses/</id>
+        
+        <content type="html">&lt;h1 id=&quot;summary&quot;&gt;Summary&lt;&#x2F;h1&gt;
+&lt;p&gt;In this article, we explore options for converting from one type to another in
+Haskell. We suggest using functions to do this work, unless converting to&#x2F;from
+multiple types - in that case, we suggest using typeclasses, or the
+&lt;code&gt;Convertible&lt;&#x2F;code&gt; typeclass if you expect to need many converters in your project
+and can take on extra dependencies, and you&#x27;re disciplined enough to not abuse
+its power.&lt;&#x2F;p&gt;
+&lt;h1 id=&quot;the-problem&quot;&gt;The Problem&lt;&#x2F;h1&gt;
+&lt;p&gt;I&#x27;ve been working through some &lt;a href=&quot;https:&#x2F;&#x2F;projecteuler.net&#x2F;&quot;&gt;Project Euler&lt;&#x2F;a&gt;
+problems lately. Many of the early problems deal with digits in a number; for
+example, &lt;a href=&quot;https:&#x2F;&#x2F;projecteuler.net&#x2F;problem=4&quot;&gt;finding palindromic numbers&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;So, in order to help, I created a simple type for dealing with digits:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;newtype &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Digit &lt;&#x2F;span&gt;&lt;span&gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Digit Natural
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;&lt;code&gt;Natural&lt;&#x2F;code&gt; is nice here - digits in a number are always positve - but &lt;code&gt;Natural&lt;&#x2F;code&gt;
+is way too big for each digit &lt;code&gt;1..9&lt;&#x2F;code&gt;. So I created a smart constructor to parse
+digits:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;toDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: Natural -&amp;gt; Either String Digit
+&lt;&#x2F;span&gt;&lt;span&gt;toDigit n
+&lt;&#x2F;span&gt;&lt;span&gt;  | n &amp;gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span&gt; &amp;amp;&amp;amp; n &amp;lt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;9 &lt;&#x2F;span&gt;&lt;span&gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Right &lt;&#x2F;span&gt;&lt;span&gt;$ &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Digit&lt;&#x2F;span&gt;&lt;span&gt; n
+&lt;&#x2F;span&gt;&lt;span&gt;  | otherwise = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Left &lt;&#x2F;span&gt;&lt;span&gt;$ &amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;Can&amp;#39;t parse &lt;&#x2F;span&gt;&lt;span&gt;&amp;quot; &amp;lt;&amp;gt; show n &amp;lt;&amp;gt; &amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt; to a digit!&lt;&#x2F;span&gt;&lt;span&gt;&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This is fine and dandy when creating &lt;code&gt;Digit&lt;&#x2F;code&gt;s from &lt;code&gt;Int&lt;&#x2F;code&gt;s, but it&#x27;s also common
+to create &lt;code&gt;Digit&lt;&#x2F;code&gt;s from &lt;code&gt;Char&lt;&#x2F;code&gt;s - for example, when turning a &lt;code&gt;Natural&lt;&#x2F;code&gt; into a
+&lt;code&gt;[Digit]&lt;&#x2F;code&gt;:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;digits &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: Natural -&amp;gt; Either String&lt;&#x2F;span&gt;&lt;span&gt; [&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;Digit&lt;&#x2F;span&gt;&lt;span&gt;]
+&lt;&#x2F;span&gt;&lt;span&gt;digits = mapM toDigit . show
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The problem here being that &lt;code&gt;toDigit :: Char -&amp;gt; Either String Digit&lt;&#x2F;code&gt; is not
+defined. I could map again using some &lt;code&gt;Char -&amp;gt; Int&lt;&#x2F;code&gt; here, but it seems more
+general (and safer, using &lt;code&gt;Either&lt;&#x2F;code&gt; to catch failures) to use &lt;code&gt;toDigit&lt;&#x2F;code&gt; here. So,
+I need a way to convert &lt;code&gt;Natural&lt;&#x2F;code&gt; to &lt;code&gt;Digit&lt;&#x2F;code&gt;, and &lt;code&gt;Char&lt;&#x2F;code&gt; to &lt;code&gt;Digit&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;h1 id=&quot;prior-work&quot;&gt;Prior work&lt;&#x2F;h1&gt;
+&lt;p&gt;It&#x27;s quite common to convert from one type to another. Usually the language
+you&#x27;re using will support many conversions to and from builtin types, but it&#x27;s
+common to convert to&#x2F;from types you define.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;regular-old-functions&quot;&gt;Regular old functions&lt;&#x2F;h2&gt;
+&lt;p&gt;How about we just write a function to convert one type to another? This is how I
+originally approached this, with &lt;code&gt;toDigit&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Pros:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Works fine for single type conversions. This is probably what you should use
+unless you know that you&#x27;ll need to convert more than one type.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Cons:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;It&#x27;d be nice to be able to convert multiple types in this way - say,
+having a &lt;code&gt;toFoo&lt;&#x2F;code&gt; function that could take a &lt;code&gt;Bar&lt;&#x2F;code&gt; or a &lt;code&gt;Baz&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;using-typeclasses&quot;&gt;Using typeclasses&lt;&#x2F;h2&gt;
+&lt;p&gt;How about using a typeclass for each of these? eg.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;newtype &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;MyNumber &lt;&#x2F;span&gt;&lt;span&gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;MyNumber Int
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;ToDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;where
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;toDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;-&amp;gt; Digit
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;PartialToDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;where
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;partialToDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;-&amp;gt; Either String Digit
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;FromDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;where
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;fromDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: Digit -&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;PartialFromDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;where
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;partialFromDigit &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: Digit -&amp;gt; Either String &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Pros:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Simple&lt;&#x2F;li&gt;
+&lt;li&gt;Provides a consistent API: can be adapted for any type using this naming
+convention&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Cons:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;More boilerplate, but can probably be alleviated with some Template Haskell.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;using-the-convertible-package&quot;&gt;Using the &lt;a href=&quot;https:&#x2F;&#x2F;hackage.haskell.org&#x2F;package&#x2F;convertible&quot;&gt;&lt;code&gt;convertible&lt;&#x2F;code&gt;&lt;&#x2F;a&gt; package&lt;&#x2F;h2&gt;
+&lt;p&gt;This package declares &lt;a href=&quot;https:&#x2F;&#x2F;hackage.haskell.org&#x2F;package&#x2F;convertible-1.1.1.1&#x2F;docs&#x2F;Data-Convertible-Base.html#g:1&quot;&gt;the &lt;code&gt;Convertible&lt;&#x2F;code&gt;
+typeclass&lt;&#x2F;a&gt;,
+for converting from &lt;code&gt;a&lt;&#x2F;code&gt; to &lt;code&gt;b&lt;&#x2F;code&gt;:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;type &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;ConvertResult&lt;&#x2F;span&gt;&lt;span&gt; a = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Either ConvertError&lt;&#x2F;span&gt;&lt;span&gt; a
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;Convertible &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a b &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;where
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;safeConvert &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;-&amp;gt; ConvertResult &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;b
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;There&#x27;s also a handy &lt;code&gt;convert&lt;&#x2F;code&gt; function, but it&#x27;s partial:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;convert &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: Convertible &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a b &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;=&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;a &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;-&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;b
+&lt;&#x2F;span&gt;&lt;span&gt;convert x =
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;case&lt;&#x2F;span&gt;&lt;span&gt; safeConvert x &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;of
+&lt;&#x2F;span&gt;&lt;span&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Left&lt;&#x2F;span&gt;&lt;span&gt; e -&amp;gt; error (prettyConvertError e)
+&lt;&#x2F;span&gt;&lt;span&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Right&lt;&#x2F;span&gt;&lt;span&gt; r -&amp;gt; r
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h3 id=&quot;similarities-to-scala-s-implicit-conversions&quot;&gt;Similarities to Scala&#x27;s implicit conversions&lt;&#x2F;h3&gt;
+&lt;p&gt;This &lt;code&gt;Convertible&lt;&#x2F;code&gt; typeclass reminds me of Scala&#x27;s implicit conversions in
+some ways: you can convert between two types by simply using the &lt;code&gt;convert&lt;&#x2F;code&gt;
+keyword, as long as there&#x27;s a way to convert between the two. In this way,
+you can make a function take just about any argument as long as it converts
+to the type that you need.&lt;&#x2F;p&gt;
+&lt;p&gt;For example, you could implement some sort of boolean coercion using
+&lt;code&gt;Convertible&lt;&#x2F;code&gt;:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;haskell&quot; style=&quot;background-color:#2b303b;color:#c0c5ce;&quot; class=&quot;language-haskell &quot;&gt;&lt;code class=&quot;language-haskell&quot; data-lang=&quot;haskell&quot;&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;instance Convertible Int Bool where
+&lt;&#x2F;span&gt;&lt;span&gt;  safeConvert n = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;Right &lt;&#x2F;span&gt;&lt;span&gt;$ n &#x2F;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#65737e;&quot;&gt;-- | Prints &amp;quot;bar&amp;quot;.
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;main &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;:: IO &lt;&#x2F;span&gt;&lt;span&gt;()
+&lt;&#x2F;span&gt;&lt;span&gt;main =
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;if&lt;&#x2F;span&gt;&lt;span&gt; convert &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;then&lt;&#x2F;span&gt;&lt;span&gt; putStrLn &amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;foo&lt;&#x2F;span&gt;&lt;span&gt;&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;else&lt;&#x2F;span&gt;&lt;span&gt; putStrLn &amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;bar&lt;&#x2F;span&gt;&lt;span&gt;&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Pros:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;One typeclass to rule them all&lt;&#x2F;li&gt;
+&lt;li&gt;Some nice utilities for failure modes&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Cons:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;This technique is pretty powerful, and can be used to make types more
+&amp;quot;dynamic&amp;quot; than they probably should be. Care should be taken to avoid
+over-abstraction.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+</content>
+        
+    </entry>
+</feed>

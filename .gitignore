@@ -1,2 +1,3 @@
-# Build output
-public/*
+# Build output is specifically _not_ ignored -- GitHub pages serves this
+# content directly.
+# public/
