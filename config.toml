@@ -1,6 +1,10 @@
 # The URL the site will be built for
 base_url = "https://sixcodes.dev"
 
+# Output to the `docs/` directory. This is required for GitHub pages to
+# pick up the public content.
+output_dir = "docs"
+
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
 
